@@ -1,9 +1,9 @@
 Package.describe({
-  name: "yogiben:autoform-file",
+  name: "fraviemor:autoform-file",
   summary: "File upload for AutoForm",
   description: "File upload for AutoForm",
   version: "0.4.2",
-  git: "https://github.com/yogiben/autoform-file.git"
+  git: "https://github.com/FraVieMor/autoform-file.git"
 });
 
 Package.onUse(function(api) {

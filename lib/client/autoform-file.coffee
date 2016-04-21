@@ -23,7 +23,7 @@ Template.afFileUpload.onCreated ->
   self = undefined
   self = this
   @value = new ReactiveVar(@data.value)
-  ###@_stopInterceptValue = false
+  @_stopInterceptValue = false
   @_interceptValue = ((_this) ->
     (ctx) ->
       ref = undefined
@@ -34,7 +34,7 @@ Template.afFileUpload.onCreated ->
           t.value.set ctx.value
           return _this._stopInterceptValue = true
       return
-  )(this)###
+  )(this)
 
   @_insert = (file) ->
     `var file`
@@ -88,6 +88,7 @@ Template.afFileUpload.helpers
       atts: @atts
     }
   file: ->
+    Template.instance()._interceptValue this
     getDocument this
   removeFileBtnTemplate: ->
     ref = undefined

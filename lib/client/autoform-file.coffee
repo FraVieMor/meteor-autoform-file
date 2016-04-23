@@ -16,14 +16,6 @@ Template.afFileUpload.onCreated ->
   self = @
   @value = new ReactiveVar @data.value
 
-  @_stopInterceptValue = false
-  @_interceptValue = (ctx) =>
-    unless @_stopInterceptValue
-      t = Template.instance()
-      if t.value.get() isnt false and t.value.get() isnt ctx.value and ctx.value?.length > 0
-        t.value.set ctx.value
-        @_stopInterceptValue = true
-
   @_insert = (file) ->
     collection = getCollection self.data
 
@@ -36,6 +28,8 @@ Template.afFileUpload.onCreated ->
     collection.insert file, (err, fileObj) ->
       if typeof self.data.atts?.onAfterInsert is 'function'
         self.data.atts.onAfterInsert err, fileObj
+
+      fileObj.update $set: metadata: owner: Meteor.userId()
 
       if err then return console.log err
       self.value.set fileObj._id
@@ -65,22 +59,18 @@ Template.afFileUpload.helpers
     file: getDocument @
     atts: @atts
   file: ->
-    Template.instance()._interceptValue @
     getDocument @
   removeFileBtnTemplate: ->
     @atts?.removeFileBtnTemplate or 'afFileRemoveFileBtnTemplate'
   selectFileBtnTemplate: ->
     @atts?.selectFileBtnTemplate or 'afFileSelectFileBtnTemplate'
+  selectFileBtnData: ->
+    label: @atts.label or 'Choose file'
+    accepts: @atts.accepts
   uploadProgressTemplate: ->
     @atts?.uploadProgressTemplate or 'afFileUploadProgress'
 
 Template.afFileUpload.events
-  'click .js-af-select-file': (e, t) ->
-    t.$('.js-file').click()
-
-  'change .js-file': (e, t) ->
-    t._insert e.target.files[0]
-
   "dragover .js-af-select-file": (e) ->
     e.stopPropagation()
     e.preventDefault()
@@ -97,6 +87,9 @@ Template.afFileUpload.events
   'click .js-af-remove-file': (e, t) ->
     e.preventDefault()
     t.value.set false
+
+  'fileuploadchange .js-file': (e, t, data) ->
+    t._insert new FS.File data.files[0]
 
 Template.afFileUploadThumbImg.helpers
   url: ->
@@ -115,3 +108,6 @@ Template.afFileUploadThumbIcon.helpers
         'file-powerpoint-o'
       else
         'file-o'
+
+Template.afFileSelectFileBtnTemplate.onRendered ->
+  @$('.js-file').fileupload()

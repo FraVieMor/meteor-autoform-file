@@ -1,5 +1,3 @@
-getCollection = undefined
-getDocument = undefined
 AutoForm.addInputType 'fileUpload',
   template: 'afFileUpload'
   valueOut: ->
@@ -7,139 +5,109 @@ AutoForm.addInputType 'fileUpload',
 
 getCollection = (context) ->
   if typeof context.atts.collection == 'string'
-    return FS._collections[context.atts.collection] or window[context.atts.collection]
-  return
+    FS._collections[context.atts.collection] or window[context.atts.collection]
 
 getDocument = (context) ->
-  collection = undefined
-  id = undefined
-  ref = undefined
-  ref1 = undefined
-  collection = getCollection(context)
-  id = if (ref = Template.instance()) != null then (if (ref1 = ref.value) != null then (if typeof ref1.get == 'function' then ref1.get() else undefined) else undefined) else undefined
-  if collection != null then collection.findOne(id) else undefined
+  collection = getCollection context
+  id = Template.instance()?.value?.get?()
+  collection?.findOne(id)
 
 Template.afFileUpload.onCreated ->
-  self = undefined
-  self = this
-  @value = new ReactiveVar(@data.value)
-  @_stopInterceptValue = false
-  @_interceptValue = ((_this) ->
-    (ctx) ->
-      ref = undefined
-      t = undefined
-      if !_this._stopInterceptValue
-        t = Template.instance()
-        if t.value.get() != false and t.value.get() != ctx.value and (if (ref = ctx.value) != null then ref.length else undefined) > 0
-          t.value.set ctx.value
-          return _this._stopInterceptValue = true
-      return
-  )(this)
+  self = @
+  @value = new ReactiveVar @data.value
 
   @_insert = (file) ->
-    `var file`
-    collection = undefined
-    ref = undefined
-    collection = getCollection(self.data)
+    collection = getCollection self.data
+
     if Meteor.userId
       file.owner = Meteor.userId()
-    if typeof (if (ref = self.data.atts) != null then ref.onBeforeInsert else undefined) == 'function'
-      file = self.data.atts.onBeforeInsert(file) or file
-    file = new (FS.File)(file)
-    file.uploadedFrom = Meteor.userId()
-    maxChunk = 2097152
-    FS.config.uploadChunkSize = if file.original.size < 10 * maxChunk then file.original.size / 10 else maxChunk
+
+    if typeof self.data.atts?.onBeforeInsert is 'function'
+      file = (self.data.atts.onBeforeInsert file) or file
+
     collection.insert file, (err, fileObj) ->
-      ref1 = undefined
-      if typeof (if (ref1 = self.data.atts) != null then ref1.onAfterInsert else undefined) == 'function'
+      if typeof self.data.atts?.onAfterInsert is 'function'
         self.data.atts.onAfterInsert err, fileObj
+
       fileObj.update $set: metadata: owner: Meteor.userId()
-      if err
-        return console.log(err)
+
+      if err then return console.log err
       self.value.set fileObj._id
 
   @autorun ->
-    _id = undefined
     _id = self.value.get()
-    _id and Meteor.subscribe('autoformFileDoc', self.data.atts.collection, _id)
+    _id and Meteor.subscribe 'autoformFileDoc', self.data.atts.collection, _id
+
 Template.afFileUpload.onRendered ->
-  self = undefined
-  self = this
+  self = @
   $(self.firstNode).closest('form').on 'reset', ->
     self.value.set false
+
 Template.afFileUpload.helpers
   label: ->
     @atts.label or 'Choose file'
   removeLabel: ->
     @atts.removeLabel or 'Remove'
   value: ->
-    doc = undefined
-    doc = getDocument(this)
-    (if doc then doc.isUploaded() else undefined) and doc._id
+    doc = getDocument @
+    doc?.isUploaded() and doc._id
   schemaKey: ->
     @atts['data-schema-key']
   previewTemplate: ->
-    ref = undefined
-    ref1 = undefined
-    (if (ref = @atts) != null then ref.previewTemplate else undefined) or (if (if (ref1 = getDocument(this)) != null then ref1.isImage() else undefined) then 'afFileUploadThumbImg' else 'afFileUploadThumbIcon')
+    @atts?.previewTemplate or if getDocument(@)?.isImage() then 'afFileUploadThumbImg' else 'afFileUploadThumbIcon'
   previewTemplateData: ->
-    {
-      file: getDocument(this)
-      atts: @atts
-    }
+    file: getDocument @
+    atts: @atts
   file: ->
-    Template.instance()._interceptValue this
-    getDocument this
+    getDocument @
   removeFileBtnTemplate: ->
-    ref = undefined
-    (if (ref = @atts) != null then ref.removeFileBtnTemplate else undefined) or 'afFileRemoveFileBtnTemplate'
+    @atts?.removeFileBtnTemplate or 'afFileRemoveFileBtnTemplate'
   selectFileBtnTemplate: ->
-    ref = undefined
-    (if (ref = @atts) != null then ref.selectFileBtnTemplate else undefined) or 'afFileSelectFileBtnTemplate'
+    @atts?.selectFileBtnTemplate or 'afFileSelectFileBtnTemplate'
   selectFileBtnData: ->
-    {
-      label: @atts.label or 'Choose file'
-      accepts: @atts.accepts
-    }
+    label: @atts.label or 'Choose file'
+    accepts: @atts.accepts
   uploadProgressTemplate: ->
-    ref = undefined
-    (if (ref = @atts) != null then ref.uploadProgressTemplate else undefined) or 'afFileUploadProgress'
+    @atts?.uploadProgressTemplate or 'afFileUploadProgress'
+
 Template.afFileUpload.events
-  'dragover .js-af-select-file': (e) ->
+  "dragover .js-af-select-file": (e) ->
     e.stopPropagation()
     e.preventDefault()
-  'dragenter .js-af-select-file': (e) ->
+
+  "dragenter .js-af-select-file": (e) ->
     e.stopPropagation()
     e.preventDefault()
-  'drop .js-af-select-file': (e, t) ->
+
+  "drop .js-af-select-file": (e, t) ->
     e.stopPropagation()
     e.preventDefault()
-    t._insert new (FS.File)(e.originalEvent.dataTransfer.files[0])
+    t._insert new FS.File e.originalEvent.dataTransfer.files[0]
+
   'click .js-af-remove-file': (e, t) ->
     e.preventDefault()
     t.value.set false
+
   'fileuploadchange .js-file': (e, t, data) ->
-    t._insert new (FS.File)(data.files[0])
-Template.afFileUploadThumbImg.helpers url: ->
-  @file.url store: @atts.store
+    t._insert new FS.File data.files[0]
+
+Template.afFileUploadThumbImg.helpers
+  url: ->
+    @file.url store: @atts.store
+
 Template.afFileUploadThumbIcon.helpers
   url: ->
     @file.url store: @atts.store
   icon: ->
     switch @file.extension()
       when 'pdf'
-        return 'file-pdf-o'
+        'file-pdf-o'
       when 'doc', 'docx'
-        return 'file-word-o'
+        'file-word-o'
       when 'ppt', 'avi', 'mov', 'mp4'
-        return 'file-powerpoint-o'
+        'file-powerpoint-o'
       else
-        return 'file-o'
-    return
+        'file-o'
+
 Template.afFileSelectFileBtnTemplate.onRendered ->
   @$('.js-file').fileupload()
-# ---
-# generated by coffee-script 1.9.2
-
-# ---
-# generated by js2coffee 2.1.0

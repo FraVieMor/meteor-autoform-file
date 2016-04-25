@@ -1,5 +1,5 @@
 Package.describe({
-  name: "fraviemor:autoform-file",
+  name: "brisbox:autoform-file",
   summary: "File upload for AutoForm",
   description: "File upload for AutoForm",
   version: "0.4.2",
